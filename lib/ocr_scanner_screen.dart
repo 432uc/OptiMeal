@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:opti_meal/food_edit_screen.dart';
+import 'package:opti_meal/food_item.dart';
 import 'nutrition_parser.dart';
 
 class OcrScannerScreen extends StatefulWidget {
@@ -13,37 +15,60 @@ class OcrScannerScreen extends StatefulWidget {
 }
 
 class _OcrScannerScreenState extends State<OcrScannerScreen> {
-  File? _image;
-  String _text = '';
-  NutritionData? _nutritionData;
+  bool _isProcessing = false;
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _pickAndProcessImage(ImageSource source) async {
+    if (_isProcessing) return;
+    setState(() {
+      _isProcessing = true;
+    });
+
     try {
       final pickedFile = await ImagePicker().pickImage(source: source);
-      if (pickedFile == null) return;
+      if (pickedFile == null) {
+        setState(() => _isProcessing = false);
+        return;
+      }
 
-      setState(() {
-        _image = File(pickedFile.path);
-        _text = '';
-        _nutritionData = null;
-      });
+      final imageFile = File(pickedFile.path);
+      final textRecognizer = TextRecognizer();
+      final inputImage = InputImage.fromFile(imageFile);
+      final recognizedText = await textRecognizer.processImage(inputImage);
+      textRecognizer.close();
 
-      _processImage(File(pickedFile.path));
+      final nutritionData = NutritionParser.parse(recognizedText.text);
+
+      final newFoodItem = FoodItem.create(
+        name: 'Scanned Food',
+        energy: nutritionData.energy,
+        protein: nutritionData.protein,
+        fat: nutritionData.fat,
+        carbohydrate: nutritionData.carbohydrate,
+      );
+
+      if (!mounted) return;
+
+      // Navigate to the edit screen with the new food item
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => FoodEditScreen(foodItem: newFoodItem),
+        ),
+      );
+
     } catch (e) {
-      debugPrint('Failed to pick image: $e');
+      debugPrint('Failed to process image: $e');
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to process image.')),
+        );
+      }
+    } finally {
+       if(mounted) {
+         setState(() {
+            _isProcessing = false;
+         });
+       }
     }
-  }
-
-  Future<void> _processImage(File imageFile) async {
-    final textRecognizer = TextRecognizer();
-    final inputImage = InputImage.fromFile(imageFile);
-    final recognizedText = await textRecognizer.processImage(inputImage);
-    textRecognizer.close();
-
-    setState(() {
-      _text = recognizedText.text;
-      _nutritionData = NutritionParser.parse(recognizedText.text);
-    });
   }
 
   @override
@@ -52,49 +77,25 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
       appBar: AppBar(
         title: const Text('栄養成分スキャナー'),
       ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                if (_image == null)
-                  const Text('画像を選択または撮影してください')
-                else
-                  Image.file(_image!),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () => _pickImage(ImageSource.camera),
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('撮影'),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () => _pickImage(ImageSource.gallery),
-                      icon: const Icon(Icons.photo_library),
-                      label: const Text('ギャラリー'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                if (_nutritionData != null)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('エネルギー: ${_nutritionData!.energy ?? "--"} kcal'),
-                      Text('タンパク質: ${_nutritionData!.protein ?? "--"} g'),
-                      Text('脂質: ${_nutritionData!.fat ?? "--"} g'),
-                      Text('炭水化物: ${_nutritionData!.carbohydrate ?? "--"} g'),
-                    ],
+      body: Center(
+        child: _isProcessing
+            ? const CircularProgressIndicator()
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => _pickAndProcessImage(ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('カメラで撮影'),
                   ),
-                const SizedBox(height: 20),
-                SelectableText(_text), // For debugging recognized text
-              ],
-            ),
-          ),
-        ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: () => _pickAndProcessImage(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text('ギャラリーから選択'),
+                  ),
+                ],
+              ),
       ),
     );
   }
