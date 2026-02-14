@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'ocr_scanner_screen.dart';
 import 'user_data_form.dart';
 import 'user_data_provider.dart';
 
@@ -64,6 +65,16 @@ class MyHomePage extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const OcrScannerScreen(),
+            ),
+          );
+        },
+        child: const Icon(Icons.camera_alt),
       ),
     );
   }
