@@ -1,14 +1,16 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:opti_meal/food_edit_screen.dart';
 import 'package:opti_meal/food_item.dart';
 import 'package:opti_meal/food_provider.dart';
-import 'ocr_scanner_screen.dart';
+import 'package:opti_meal/gemini_scanner_screen.dart';
 import 'user_data_form.dart';
 import 'user_data_provider.dart';
 
-void main() {
+Future<void> main() async {
+  await dotenv.load(fileName: ".env");
   runApp(
     const ProviderScope(
       child: MyApp(),
@@ -24,7 +26,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'OptiMeal',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        useMaterial3: true,
       ),
       home: const MyHomePage(),
     );
@@ -36,14 +39,15 @@ class MyHomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userData = ref.watch(userDataProvider);
-    final tdee = userData?.tdee;
+    // Corrected provider name to match food_provider.dart
     final foodItems = ref.watch(foodListProvider);
+    final userData = ref.watch(userDataProvider);
 
-    final totalEnergy = foodItems.fold<double>(
-      0.0,
-      (sum, item) => sum + (item.energy ?? 0.0),
-    );
+    // Calculate total energy locally as the helper method was missing
+    double totalEnergy = 0;
+    for (var item in foodItems) {
+      totalEnergy += (item.energy ?? 0);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -61,80 +65,61 @@ class MyHomePage extends ConsumerWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: <Widget>[
-            _buildSummaryCard(context, tdee, totalEnergy),
-            const SizedBox(height: 16),
-            Text('今日の食事', style: Theme.of(context).textTheme.titleLarge),
-            Expanded(
-              child: ListView.builder(
-                itemCount: foodItems.length,
-                itemBuilder: (context, index) {
-                  final item = foodItems[index];
-                  return Card(
-                    child: ListTile(
-                      title: Text(item.name),
-                      subtitle: Text('${item.energy?.toStringAsFixed(1) ?? 'N/A'} kcal'),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => FoodEditScreen(foodItem: item),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
+      body: foodItems.isEmpty
+          ? const Center(
+              child: Text('食事を記録しましょう！'),
+            )
+          : ListView.builder(
+              itemCount: foodItems.length,
+              itemBuilder: (context, index) {
+                final item = foodItems[index];
+                return ListTile(
+                  title: Text(item.name ?? '不明な食品'),
+                  subtitle: Text(
+                      '${item.energy?.toStringAsFixed(1)} kcal | P:${item.protein?.toStringAsFixed(1)}g F:${item.fat?.toStringAsFixed(1)}g C:${item.carbohydrate?.toStringAsFixed(1)}g'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () {
+                      // Corrected method name to removeFoodItem
+                      ref.read(foodListProvider.notifier).removeFoodItem(item.id);
+                    },
+                  ),
+                  onTap: () {
+                     Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => FoodEditScreen(foodItem: item),
+                        ),
+                      );
+                  },
+                );
+              },
             ),
-          ],
-        ),
-      ),
+      bottomNavigationBar: userData == null 
+        ? null
+        : Container(
+            color: Colors.green.shade100,
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('今日の目標達成状況', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('エネルギー: ${totalEnergy.toStringAsFixed(1)} / ${userData.tdee.toStringAsFixed(1)} kcal'),
+                LinearProgressIndicator(
+                  value: userData.tdee > 0 ? totalEnergy / userData.tdee : 0,
+                ),
+              ],
+            ),
+          ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const OcrScannerScreen(),
+              builder: (context) => const GeminiScannerScreen(),
             ),
           );
         },
         child: const Icon(Icons.camera_alt),
-        tooltip: 'Scan Nutrition Label',
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(BuildContext context, double? tdee, double totalEnergy) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Column(
-              children: [
-                Text('目標 (TDEE)', style: Theme.of(context).textTheme.bodyLarge),
-                Text(
-                  tdee != null ? '${tdee.toStringAsFixed(0)} kcal' : '未設定',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-              ],
-            ),
-            Column(
-              children: [
-                Text('摂取カロリー', style: Theme.of(context).textTheme.bodyLarge),
-                Text(
-                  '${totalEnergy.toStringAsFixed(0)} kcal',
-                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: (tdee != null && totalEnergy > tdee) ? Colors.red : null,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+        tooltip: 'Scan with AI',
       ),
     );
   }
