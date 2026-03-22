@@ -1,6 +1,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:opti_meal/meal_record.dart';
+import 'package:opti_meal/meal_repository.dart';
 import 'food_item.dart';
 import 'food_provider.dart';
 
@@ -41,7 +43,7 @@ class _FoodEditScreenState extends ConsumerState<FoodEditScreen> {
     super.dispose();
   }
 
-  void _saveForm() {
+  Future<void> _saveForm() async {
     if (_formKey.currentState!.validate()) {
       final updatedItem = FoodItem(
         id: widget.foodItem.id,
@@ -51,14 +53,29 @@ class _FoodEditScreenState extends ConsumerState<FoodEditScreen> {
         fat: double.tryParse(_fatController.text),
         carbohydrate: double.tryParse(_carbohydrateController.text),
       );
+      
+      // Save for current session (SharedPrefs / current list)
       ref.read(foodListProvider.notifier).addOrUpdateFoodItem(updatedItem);
-      Navigator.of(context).pop();
+
+      // Save to Isar for history/calendar
+      final mealRecord = MealRecord(
+        name: updatedItem.name,
+        energy: updatedItem.energy,
+        protein: updatedItem.protein,
+        fat: updatedItem.fat,
+        carbohydrate: updatedItem.carbohydrate,
+        date: DateTime.now(), // Store with current timestamp
+      );
+      await ref.read(mealRepositoryProvider).saveMealRecord(mealRecord);
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     }
   }
 
   void _deleteItem() {
     ref.read(foodListProvider.notifier).removeFoodItem(widget.foodItem.id);
-    // Pop twice to go back to the main screen
     Navigator.of(context).pop(); 
     if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
@@ -69,7 +86,7 @@ class _FoodEditScreenState extends ConsumerState<FoodEditScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.foodItem.name.isEmpty ? 'Add Food' : 'Edit Food'),
+        title: Text(widget.foodItem.name.isEmpty ? '食事内容の入力' : '食事内容の編集'),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete),
@@ -85,31 +102,39 @@ class _FoodEditScreenState extends ConsumerState<FoodEditScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-                validator: (value) => value!.isEmpty ? 'Please enter a name' : null,
+                decoration: const InputDecoration(labelText: '食品・料理名'),
+                validator: (value) => value!.isEmpty ? '名前を入力してください' : null,
               ),
               TextFormField(
                 controller: _energyController,
-                decoration: const InputDecoration(labelText: 'Energy (kcal)'),
+                decoration: const InputDecoration(labelText: 'エネルギー (kcal)'),
                 keyboardType: TextInputType.number,
               ),
               TextFormField(
                 controller: _proteinController,
-                decoration: const InputDecoration(labelText: 'Protein (g)'),
+                decoration: const InputDecoration(labelText: 'タンパク質 (g)'),
                 keyboardType: TextInputType.number,
               ),
               TextFormField(
                 controller: _fatController,
-                decoration: const InputDecoration(labelText: 'Fat (g)'),
+                decoration: const InputDecoration(labelText: '脂質 (g)'),
                 keyboardType: TextInputType.number,
               ),
               TextFormField(
                 controller: _carbohydrateController,
-                decoration: const InputDecoration(labelText: 'Carbohydrate (g)'),
+                decoration: const InputDecoration(labelText: '炭水化物 (g)'),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 20),
-              ElevatedButton(onPressed: _saveForm, child: const Text('Save')),
+              ElevatedButton(
+                onPressed: _saveForm, 
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(16),
+                ),
+                child: const Text('保存', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
             ],
           ),
         ),
