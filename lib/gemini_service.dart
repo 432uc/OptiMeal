@@ -70,4 +70,58 @@ class GeminiService {
 
     throw Exception('Gemini解析に失敗しました。詳細: $lastError');
   }
+  Future<NutritionData?> analyzeText(String foodName) async {
+    if (_apiKey == null || _apiKey!.isEmpty) {
+      throw Exception('APIキーが.envファイルに見つかりません。');
+    }
+
+    final models = [
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-latest',
+      'gemini-2.0-flash-exp',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-latest'
+    ];
+    
+    String lastError = '';
+
+    for (final modelName in models) {
+      try {
+        debugPrint('Trying Gemini text analysis with model: $modelName');
+        final model = GenerativeModel(
+          model: modelName,
+          apiKey: _apiKey!,
+        );
+
+        final response = await model.generateContent([
+          Content.text('「$foodName」の一般的な栄養成分を推定してください。回答は以下のJSONフォーマットのみで行ってください: {"name":"食品名", "energy":カロリー(数字), "protein":タンパク質g(数字), "fat":脂質g(数字), "carbohydrate":炭水化物g(数字)}')
+        ]);
+
+        final text = response.text;
+        if (text == null) continue;
+
+        // Extract JSON from response
+        final match = RegExp(r'\{.*\}', dotAll: true).firstMatch(text);
+        if (match == null) continue;
+        
+        final data = jsonDecode(match.group(0)!);
+        debugPrint('Success with $modelName');
+
+        return NutritionData(
+          name: data['name'] as String?,
+          energy: (data['energy'] as num?)?.toDouble(),
+          protein: (data['protein'] as num?)?.toDouble(),
+          fat: (data['fat'] as num?)?.toDouble(),
+          carbohydrate: (data['carbohydrate'] as num?)?.toDouble(),
+        );
+      } catch (e) {
+        lastError = e.toString();
+        if (!e.toString().contains('404')) {
+          break; 
+        }
+      }
+    }
+
+    throw Exception('Gemini解析に失敗しました。詳細: $lastError');
+  }
 }

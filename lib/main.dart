@@ -136,8 +136,8 @@ class MyHomePage extends ConsumerWidget {
             ),
           );
         },
-        child: const Icon(Icons.camera_alt),
-        tooltip: 'Scan with AI',
+        child: const Icon(Icons.add),
+        tooltip: '食事を登録する',
       ),
     );
   }
