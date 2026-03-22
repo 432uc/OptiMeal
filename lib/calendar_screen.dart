@@ -5,6 +5,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'calendar_provider.dart';
 import 'meal_record.dart';
+import 'meal_record_edit_screen.dart';
 
 class CalendarScreen extends ConsumerWidget {
   const CalendarScreen({super.key});
@@ -138,6 +139,13 @@ class CalendarScreen extends ConsumerWidget {
                   '${meal.energy?.toStringAsFixed(1)} kcal | P:${meal.protein?.toStringAsFixed(1)}g F:${meal.fat?.toStringAsFixed(1)}g C:${meal.carbohydrate?.toStringAsFixed(1)}g',
                 ),
                 trailing: Text(DateFormat('HH:mm').format(meal.date)),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => MealRecordEditScreen(record: meal),
+                    ),
+                  );
+                },
               );
             },
           ),
