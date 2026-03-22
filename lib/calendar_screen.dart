@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'calendar_provider.dart';
 import 'meal_record.dart';
 import 'meal_record_edit_screen.dart';
+import 'nutrition_chart_widget.dart';
 
 class CalendarScreen extends ConsumerWidget {
   const CalendarScreen({super.key});
@@ -16,6 +17,7 @@ class CalendarScreen extends ConsumerWidget {
     final selectedDay = ref.watch(selectedDayProvider);
     final selectedDayMeals = ref.watch(selectedDayMealsProvider);
     final dailyTotals = ref.watch(dailyTotalsProvider);
+    final calendarFormat = ref.watch(calendarFormatProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -34,7 +36,8 @@ class CalendarScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          _buildCalendarSection(ref, focusedDay, selectedDay, dailyTotals),
+          _buildCalendarSection(ref, focusedDay, selectedDay, dailyTotals, calendarFormat),
+          const NutritionChartWidget(),
           const Divider(),
           Expanded(
             child: _buildMealListSection(selectedDay, selectedDayMeals),
@@ -49,14 +52,20 @@ class CalendarScreen extends ConsumerWidget {
     DateTime focusedDay,
     DateTime selectedDay,
     Map<int, double> dailyTotals,
+    CalendarFormat calendarFormat,
   ) {
     return TableCalendar(
       firstDay: DateTime.utc(2020, 1, 1),
       lastDay: DateTime.utc(2030, 12, 31),
       focusedDay: focusedDay,
-      headerStyle: const HeaderStyle(
-        formatButtonVisible: false, // 2weeks/month切り替えボタンを非表示
-      ),
+      calendarFormat: calendarFormat,
+      availableCalendarFormats: const {
+        CalendarFormat.month: '月間',
+        CalendarFormat.week: '週間',
+      },
+      onFormatChanged: (format) {
+        ref.read(calendarFormatProvider.notifier).state = format;
+      },
       selectedDayPredicate: (day) => isSameDay(selectedDay, day),
       onDaySelected: (selected, focused) {
         ref.read(selectedDayProvider.notifier).state = selected;
