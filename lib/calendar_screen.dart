@@ -20,6 +20,17 @@ class CalendarScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('栄養カレンダー'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.today),
+            tooltip: '今日に戻る',
+            onPressed: () {
+              final now = DateTime.now();
+              ref.read(selectedDayProvider.notifier).state = now;
+              ref.read(focusedDayProvider.notifier).state = now;
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -43,6 +54,9 @@ class CalendarScreen extends ConsumerWidget {
       firstDay: DateTime.utc(2020, 1, 1),
       lastDay: DateTime.utc(2030, 12, 31),
       focusedDay: focusedDay,
+      headerStyle: const HeaderStyle(
+        formatButtonVisible: false, // 2weeks/month切り替えボタンを非表示
+      ),
       selectedDayPredicate: (day) => isSameDay(selectedDay, day),
       onDaySelected: (selected, focused) {
         ref.read(selectedDayProvider.notifier).state = selected;
