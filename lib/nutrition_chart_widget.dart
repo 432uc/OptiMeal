@@ -38,23 +38,29 @@ class NutritionChartWidget extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  const Text('栄養サマリー', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  SegmentedButton<GraphPeriod>(
-                    segments: const [
-                      ButtonSegment(value: GraphPeriod.day, label: Text('1日')),
-                      ButtonSegment(value: GraphPeriod.week, label: Text('週間')),
-                      ButtonSegment(value: GraphPeriod.month, label: Text('月間')),
-                    ],
-                    selected: {ref.watch(graphPeriodProvider)},
-                    onSelectionChanged: (Set<GraphPeriod> newSelection) {
-                      ref.read(graphPeriodProvider.notifier).state = newSelection.first;
-                    },
-                    style: SegmentedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      visualDensity: VisualDensity.compact,
+                  const Text('サマリー', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: SegmentedButton<GraphPeriod>(
+                      segments: const [
+                        ButtonSegment(value: GraphPeriod.day, label: Text('1日')),
+                        ButtonSegment(value: GraphPeriod.week, label: Text('週間')),
+                        ButtonSegment(value: GraphPeriod.month, label: Text('月間')),
+                      ],
+                      selected: {ref.watch(graphPeriodProvider)},
+                      onSelectionChanged: (Set<GraphPeriod> newSelection) {
+                        ref.read(graphPeriodProvider.notifier).state = newSelection.first;
+                      },
+                      style: SegmentedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        visualDensity: VisualDensity.compact,
+                      ),
                     ),
                   ),
                 ],
@@ -138,7 +144,14 @@ class NutritionChartWidget extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-            Text('${actual.toInt()} / ${target.toInt()} ($diffText)', style: const TextStyle(fontSize: 11)),
+            const SizedBox(width: 4),
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text('${actual.toInt()} / ${target.toInt()} ($diffText)', style: const TextStyle(fontSize: 11)),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),
